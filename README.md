@@ -160,7 +160,7 @@ Device to Host:
 Avg: 35.37 GB/s
 Min: 31.20 GB/s
 Max: 38.08 GB/s
-
+```
 
 ## License
 
