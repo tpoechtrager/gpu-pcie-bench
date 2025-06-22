@@ -6,8 +6,11 @@ GPU PCIe Bandwidth Benchmark
 
 ## What kind of a tool is this?
 
-`gpu-pcie-bench` measures the data transfer bandwidth between your CPU host memory and GPU device memory over the PCIe bus using OpenCL.  
-It benchmarks Host-to-Device and Device-to-Host transfer speeds for configurable buffer sizes and iteration counts.
+`gpu-pcie-bench` measures the data transfer bandwidth between your CPU host memory and  
+GPU device memory over the PCIe bus using OpenCL.  
+
+It benchmarks Host-to-Device and Device-to-Host transfer speeds for configurable buffer  
+sizes and iteration counts.
 
 ---
 
