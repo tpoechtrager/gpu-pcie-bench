@@ -46,77 +46,88 @@ Or run benchmark for 25 iterations, buffer sizes 1MB, 10MB, 100MB:
 
     ./gpu-pcie-bench --rounds 25 --sizes 1,10,100 --direction both --unit gb
 
-Example Output:
+Example Output (Windows):
 
 ```shell
 CPU: AMD Ryzen 9 9950X3D 16-Core Processor
-GPU: gfx1201 (This is an AMD RX 9070 XT)
+GPU: gfx1201 (16304 MB)  (This is an AMD RX 9070 XT)
+
+[Buffer size: 512 KB]
+  Iteration 100/100
+Host to Device:
+  Avg: 5.57 GB/s
+  Min: 1.60 GB/s
+  Max: 6.80 GB/s
+Device to Host:
+  Avg: 5.66 GB/s
+  Min: 1.57 GB/s
+  Max: 6.82 GB/s
 
 [Buffer size: 1 MB]
-Iteration 100/100
+  Iteration 100/100
 Host to Device:
-Avg: 7.29 GB/s
-Min: 2.44 GB/s
-Max: 10.04 GB/s
+  Avg: 9.85 GB/s
+  Min: 3.19 GB/s
+  Max: 11.48 GB/s
 Device to Host:
-Avg: 8.67 GB/s
-Min: 2.56 GB/s
-Max: 11.50 GB/s
+  Avg: 10.07 GB/s
+  Min: 2.91 GB/s
+  Max: 11.68 GB/s
 
 [Buffer size: 10 MB]
-Iteration 100/100
+  Iteration 100/100
 Host to Device:
-Avg: 31.44 GB/s
-Min: 11.54 GB/s
-Max: 35.69 GB/s
+  Avg: 32.54 GB/s
+  Min: 11.53 GB/s
+  Max: 36.49 GB/s
 Device to Host:
-Avg: 33.27 GB/s
-Min: 10.17 GB/s
-Max: 38.49 GB/s
+  Avg: 35.64 GB/s
+  Min: 12.71 GB/s
+  Max: 38.89 GB/s
 
 [Buffer size: 100 MB]
-Iteration 100/100
+  Iteration 100/100
 Host to Device:
-Avg: 47.94 GB/s
-Min: 17.08 GB/s
-Max: 49.69 GB/s
+  Avg: 48.47 GB/s
+  Min: 17.56 GB/s
+  Max: 50.02 GB/s
 Device to Host:
-Avg: 48.95 GB/s
-Min: 17.26 GB/s
-Max: 50.67 GB/s
+  Avg: 49.15 GB/s
+  Min: 17.31 GB/s
+  Max: 50.68 GB/s
 
 [Buffer size: 512 MB]
-Iteration 100/100
+  Iteration 100/100
 Host to Device:
-Avg: 50.32 GB/s
-Min: 18.60 GB/s
-Max: 51.53 GB/s
+  Avg: 50.53 GB/s
+  Min: 18.56 GB/s
+  Max: 51.72 GB/s
 Device to Host:
-Avg: 51.24 GB/s
-Min: 19.21 GB/s
-Max: 52.26 GB/s
+  Avg: 51.31 GB/s
+  Min: 20.11 GB/s
+  Max: 52.37 GB/s
 
-[Buffer size: 1024 MB]
-Iteration 100/100
+[Buffer size: 1 GB]
+  Iteration 100/100
 Host to Device:
-Avg: 50.59 GB/s
-Min: 17.86 GB/s
-Max: 51.83 GB/s
+  Avg: 50.79 GB/s
+  Min: 18.26 GB/s
+  Max: 52.05 GB/s
 Device to Host:
-Avg: 51.28 GB/s
-Min: 16.56 GB/s
-Max: 52.50 GB/s
+  Avg: 51.33 GB/s
+  Min: 16.84 GB/s
+  Max: 52.49 GB/s
 
-[Buffer size: 2048 MB]
-Iteration 100/100
+[Buffer size: 2 GB]
+  Iteration 100/100
 Host to Device:
-Avg: 35.02 GB/s
-Min: 21.83 GB/s
-Max: 37.99 GB/s
+  Avg: 39.18 GB/s
+  Min: 21.89 GB/s
+  Max: 40.15 GB/s
 Device to Host:
-Avg: 35.37 GB/s
-Min: 31.20 GB/s
-Max: 38.08 GB/s
+  Avg: 39.52 GB/s
+  Min: 38.83 GB/s
+  Max: 40.21 GB/s
 ```
 
 ## Compilation

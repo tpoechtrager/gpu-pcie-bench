@@ -13,15 +13,19 @@
     - Output unit: --unit mb | gb (default is gb)
     - Real-time progress display
     - Clean summary output: min / avg / max bandwidth
+    - CPU and GPU name output (GPU name with memory in MB)
+    - GPU memory size aware buffer size filtering for standard sizes
+    - Version info via --version
 
   Requires:
     - OpenCL runtime and ICD loader installed
     - GPU with OpenCL support
 
   Usage example:
-    gpu-pcie-bench --rounds 50 --sizes 512,1024 --direction both --unit gb
-
+    gpu-pcie-bench --rounds 50 --sizes 512K,1M,10M --direction both --unit gb
 */
+
+#define VERSION "1.1"
 
 #define CL_TARGET_OPENCL_VERSION 120
 #define CHECK(status, msg) \
@@ -96,16 +100,17 @@ enum class Unit {
 };
 
 void print_help() {
-  std::cout <<
-    "gpu-pcie-bench: GPU <-> Host Bandwidth Benchmark via OpenCL\n"
-    "Measures transfer speeds between your GPU and system memory over PCIe using OpenCL.\n\n"
-    "Usage: gpu-pcie-bench [options]\n"
-    "Options:\n"
-    "  --rounds N           Number of iterations per test (default: 100)\n"
-    "  --sizes MB,MB,...    Comma-separated buffer sizes in MB\n"
-    "  --direction MODE     Transfer direction: host2dev, dev2host, both (default)\n"
-    "  --unit mb|gb         Output unit (default: gb)\n"
-    "  --help               Show this help message\n";
+  std::cout << "gpu-pcie-bench version " << VERSION << "\n"
+            << "GPU <-> Host Bandwidth Benchmark via OpenCL\n\n"
+            << "Measures transfer speeds between your GPU and system memory over PCIe using OpenCL.\n\n"
+            << "Usage: gpu-pcie-bench [options]\n"
+            << "Options:\n"
+            << "  --rounds N           Number of iterations per test (default: 100)\n"
+            << "  --sizes SIZES        Comma-separated buffer sizes with optional units (e.g. 1,10K,100M,1G)\n"
+            << "  --direction MODE     Transfer direction: host2dev, dev2host, both (default)\n"
+            << "  --unit mb|gb         Output unit (default: gb)\n"
+            << "  --version            Show version info\n"
+            << "  --help               Show this help message\n";
 }
 
 std::vector<size_t> parse_sizes(const std::string& str) {
@@ -114,8 +119,23 @@ std::vector<size_t> parse_sizes(const std::string& str) {
   std::string item;
   while (std::getline(ss, item, ',')) {
     try {
-      size_t val = static_cast<size_t>(std::stoull(item));
-      result.push_back(val * 1024ULL * 1024ULL);
+      size_t multiplier = 1;
+      std::string numberPart = item;
+      if (!item.empty()) {
+        char lastChar = item.back();
+        if (lastChar == 'K' || lastChar == 'k') {
+          multiplier = 1024ULL;
+          numberPart = item.substr(0, item.size() - 1);
+        } else if (lastChar == 'M' || lastChar == 'm') {
+          multiplier = 1024ULL * 1024ULL;
+          numberPart = item.substr(0, item.size() - 1);
+        } else if (lastChar == 'G' || lastChar == 'g') {
+          multiplier = 1024ULL * 1024ULL * 1024ULL;
+          numberPart = item.substr(0, item.size() - 1);
+        }
+      }
+      size_t val = static_cast<size_t>(std::stoull(numberPart));
+      result.push_back(val * multiplier);
     } catch (...) {
       std::cerr << "Invalid size: " << item << "\n";
     }
@@ -142,14 +162,54 @@ Unit parse_unit(const std::string& s) {
   exit(1);
 }
 
+void filter_static_sizes_by_gpu_memory(std::vector<size_t>& sizes, size_t gpuMemSize) {
+  std::vector<size_t> staticSizes = {
+    512 * 1024,
+    1 * 1024 * 1024,
+    10 * 1024 * 1024,
+    100 * 1024 * 1024,
+    512 * 1024 * 1024
+  };
+
+#if UINTPTR_MAX == 0xffffffffffffffff
+  staticSizes.push_back(1024ULL * 1024 * 1024);    // 1 GB
+  staticSizes.push_back(2048ULL * 1024 * 1024);    // 2 GB
+  staticSizes.push_back(4096ULL * 1024 * 1024);    // 4 GB
+#endif
+
+  for (size_t sz : staticSizes) {
+    if (sz > gpuMemSize / 4) {
+      sizes.erase(std::remove(sizes.begin(), sizes.end(), sz), sizes.end());
+    } else {
+      if (std::find(sizes.begin(), sizes.end(), sz) == sizes.end()) {
+        sizes.push_back(sz);
+      }
+    }
+  }
+
+  std::sort(sizes.begin(), sizes.end());
+}
+
+std::string format_size(size_t bytes) {
+  if (bytes >= 1024ULL * 1024 * 1024) {
+    return std::to_string(bytes / (1024 * 1024 * 1024)) + " GB";
+  } else if (bytes >= 1024 * 1024) {
+    return std::to_string(bytes / (1024 * 1024)) + " MB";
+  } else if (bytes >= 1024) {
+    return std::to_string(bytes / 1024) + " KB";
+  } else {
+    return std::to_string(bytes) + " B";
+  }
+}
+
 double measure(cl_command_queue queue, cl_mem deviceBuf, void* hostPtr, size_t size, bool write) {
   auto start = std::chrono::high_resolution_clock::now();
   cl_int status = write ?
     clEnqueueWriteBuffer(queue, deviceBuf, CL_TRUE, 0, size, hostPtr, 0, nullptr, nullptr) :
     clEnqueueReadBuffer(queue, deviceBuf, CL_TRUE, 0, size, hostPtr, 0, nullptr, nullptr);
   clFinish(queue);
-  auto end = std::chrono::high_resolution_clock::now();
   CHECK(status, write ? "Write failed" : "Read failed");
+  auto end = std::chrono::high_resolution_clock::now();
   return std::chrono::duration<double>(end - start).count();
 }
 
@@ -157,8 +217,10 @@ int main(int argc, char* argv[]) {
   int rounds = 100;
   Direction direction = Direction::Both;
   Unit unit = Unit::GBps;
+  bool userSpecifiedSizes = false;
 
   std::vector<size_t> sizes = {
+    512 * 1024,
     1 * 1024 * 1024,
     10 * 1024 * 1024,
     100 * 1024 * 1024,
@@ -166,9 +228,9 @@ int main(int argc, char* argv[]) {
   };
 
 #if UINTPTR_MAX == 0xffffffffffffffff
-  // 64-bit only
   sizes.push_back(1024ULL * 1024 * 1024);   // 1 GB
   sizes.push_back(2048ULL * 1024 * 1024);   // 2 GB
+  sizes.push_back(4096ULL * 1024 * 1024);   // 4 GB
 #endif
 
   for (int i = 1; i < argc; ++i) {
@@ -176,10 +238,14 @@ int main(int argc, char* argv[]) {
     if (arg == "--help") {
       print_help();
       return 0;
+    } else if (arg == "--version") {
+      std::cout << "gpu-pcie-bench version " << VERSION << "\n";
+      return 0;
     } else if (arg == "--rounds" && i + 1 < argc) {
       rounds = std::stoi(argv[++i]);
     } else if (arg == "--sizes" && i + 1 < argc) {
       sizes = parse_sizes(argv[++i]);
+      userSpecifiedSizes = true;
     } else if (arg == "--direction" && i + 1 < argc) {
       direction = parse_direction(argv[++i]);
     } else if (arg == "--unit" && i + 1 < argc) {
@@ -197,12 +263,20 @@ int main(int argc, char* argv[]) {
   cl_int status;
   cl_uint numPlatforms = 0;
   CHECK(clGetPlatformIDs(0, nullptr, &numPlatforms), "Failed to get platform count");
+  if (numPlatforms == 0) {
+    std::cerr << "No OpenCL platforms found.\n";
+    return 1;
+  }
   std::vector<cl_platform_id> platforms(numPlatforms);
   CHECK(clGetPlatformIDs(numPlatforms, platforms.data(), nullptr), "Failed to get platforms");
 
   cl_platform_id platform = platforms[0];
   cl_uint numDevices = 0;
   CHECK(clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, nullptr, &numDevices), "Failed to get device count");
+  if (numDevices == 0) {
+    std::cerr << "No GPU devices found on platform.\n";
+    return 1;
+  }
   std::vector<cl_device_id> devices(numDevices);
   CHECK(clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, devices.data(), nullptr), "Failed to get devices");
 
@@ -214,7 +288,19 @@ int main(int argc, char* argv[]) {
   std::vector<char> gpuName(gpuNameSize);
   CHECK(clGetDeviceInfo(device, CL_DEVICE_NAME, gpuNameSize, gpuName.data(), nullptr), "Failed to get GPU name");
 
-  std::cout << "GPU: " << std::string(gpuName.data()) << "\n";
+  cl_ulong gpuMemSize = 0;
+  CHECK(clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(gpuMemSize), &gpuMemSize, nullptr), "Failed to get GPU memory size");
+
+  std::cout << "GPU: " << std::string(gpuName.data()) << " (" << (gpuMemSize / (1024 * 1024)) << " MB)\n";
+
+  if (!userSpecifiedSizes) {
+    filter_static_sizes_by_gpu_memory(sizes, static_cast<size_t>(gpuMemSize));
+  }
+
+  if (sizes.empty()) {
+    std::cerr << "No buffer sizes fit GPU memory constraints. Exiting.\n";
+    return 1;
+  }
 
   cl_context context = clCreateContext(nullptr, 1, &device, nullptr, nullptr, &status);
   CHECK(status, "Failed to create context");
@@ -225,7 +311,7 @@ int main(int argc, char* argv[]) {
   std::cout << std::fixed << std::setprecision(2);
 
   for (size_t dataSize : sizes) {
-    std::cout << "\n[Buffer size: " << (dataSize / (1024 * 1024)) << " MB]\n";
+    std::cout << "\n[Buffer size: " << format_size(dataSize) << "]\n";
 
     cl_mem hostBuf = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, dataSize, nullptr, &status);
     CHECK(status, "Failed to allocate pinned host buffer");
