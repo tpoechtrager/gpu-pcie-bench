@@ -4,7 +4,7 @@ GPU PCIe Bandwidth Benchmark
 
 ---
 
-## What is this?
+## What kind of a tool is this?
 
 `gpu-pcie-bench` measures the data transfer bandwidth between your CPU host memory and GPU device memory over the PCIe bus using OpenCL.  
 It benchmarks Host-to-Device and Device-to-Host transfer speeds for configurable buffer sizes and iteration counts.
@@ -25,7 +25,7 @@ It benchmarks Host-to-Device and Device-to-Host transfer speeds for configurable
 
 - OpenCL runtime and drivers installed  
 - GPU with OpenCL support  
-- For cross-compilation: MinGW-w64 toolchain + Windows OpenCL SDK
+- For cross-compilation: MinGW-w64 toolchain + Windows OpenCL SDK (included in the repo)
 
 ---
 
@@ -36,52 +36,6 @@ Run
     ./gpu-pcie-bench --help
 
 to see all options.
-
----
-
-## Compilation
-
-### Linux (Debian/Ubuntu native build)
-
-Make sure you have OpenCL headers and libraries installed:
-
-    sudo apt update  
-    sudo apt install build-essential ocl-icd-opencl-dev opencl-headers
-
-Compile with:
-
-    make
-
-The binary will be created in:
-
-    bin/<ARCH>/gpu-pcie-bench
-
----
-
-### Windows (cross-compile with MinGW)
-
-Currently the Makefile supports only cross-compilation for Windows.
-
-Install MinGW-w64 toolchain on Debian/Ubuntu:
-
-    sudo apt update  
-    sudo apt install mingw-w64
-
-Build 64-bit Windows binary:
-
-    make USE_MINGW=1 ARCH=x86_64
-
-Build 32-bit Windows binary:
-
-    make USE_MINGW=1 ARCH=i686
-
-The .exe will be in:
-
-  `bin/x86_64/gpu-pcie-bench.exe`  or `bin/i686/gpu-pcie-bench.exe`.
-
----
-
-## Example
 
     ./gpu-pcie-bench
 
@@ -161,6 +115,46 @@ Avg: 35.37 GB/s
 Min: 31.20 GB/s
 Max: 38.08 GB/s
 ```
+
+## Compilation
+
+### Linux (Debian/Ubuntu native build)
+
+Make sure you have OpenCL headers and libraries installed:
+
+    sudo apt update  
+    sudo apt install build-essential ocl-icd-opencl-dev opencl-headers
+
+Compile with:
+
+    make
+
+The binary will be created in:
+
+    bin/<ARCH>/gpu-pcie-bench
+
+---
+
+### Windows (cross-compile with MinGW)
+
+Currently the Makefile supports only cross-compilation for Windows.
+
+Install MinGW-w64 toolchain on Debian/Ubuntu:
+
+    sudo apt update  
+    sudo apt install mingw-w64
+
+Build 64-bit Windows binary:
+
+    make USE_MINGW=1 ARCH=x86_64
+
+Build 32-bit Windows binary:
+
+    make USE_MINGW=1 ARCH=i686
+
+The .exe will be in:
+
+  `bin/x86_64/gpu-pcie-bench.exe`  or `bin/i686/gpu-pcie-bench.exe`.
 
 ## License
 
