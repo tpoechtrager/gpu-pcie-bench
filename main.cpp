@@ -105,6 +105,7 @@ void print_help() {
             << "Measures transfer speeds between your GPU and system memory over PCIe using OpenCL.\n\n"
             << "Usage: gpu-pcie-bench [options]\n"
             << "Options:\n"
+            << "  --device N           Target gpu device (default: 0)\n"
             << "  --rounds N           Number of iterations per test (default: 100)\n"
             << "  --sizes SIZES        Comma-separated buffer sizes with optional units (e.g. 1,10K,100M,1G)\n"
             << "  --direction MODE     Transfer direction: host2dev, dev2host, both (default)\n"
@@ -215,6 +216,7 @@ double measure(cl_command_queue queue, cl_mem deviceBuf, void* hostPtr, size_t s
 
 int main(int argc, char* argv[]) {
   int rounds = 100;
+  int targetDevice = 0;
   Direction direction = Direction::Both;
   Unit unit = Unit::GBps;
   bool userSpecifiedSizes = false;
@@ -250,6 +252,8 @@ int main(int argc, char* argv[]) {
       direction = parse_direction(argv[++i]);
     } else if (arg == "--unit" && i + 1 < argc) {
       unit = parse_unit(argv[++i]);
+    } else if (arg == "--device" && i + 1 < argc) {
+      targetDevice = std::stoi(argv[++i]);
     } else {
       std::cerr << "Unknown argument: " << arg << "\n";
       print_help();
@@ -280,7 +284,12 @@ int main(int argc, char* argv[]) {
   std::vector<cl_device_id> devices(numDevices);
   CHECK(clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, devices.data(), nullptr), "Failed to get devices");
 
-  cl_device_id device = devices[0];
+  if (targetDevice >= numDevices) {
+    std::cerr << "Target GPU device " << targetDevice << " is beyond GPU devices found on platform.\n";
+    return 1;
+  }
+
+  cl_device_id device = devices[targetDevice];
 
   // GPU Name
   size_t gpuNameSize = 0;
