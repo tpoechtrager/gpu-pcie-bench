@@ -25,7 +25,7 @@
     gpu-pcie-bench --rounds 50 --sizes 512K,1M,10M --direction both --unit gb
 */
 
-#define VERSION "1.1"
+#define VERSION "1.2"
 
 #define CL_TARGET_OPENCL_VERSION 120
 #define CHECK(status, msg) \
